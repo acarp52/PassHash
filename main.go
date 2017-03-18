@@ -43,12 +43,13 @@ func usage() {
 }
 
 // Gracefully shuts down the server. 
-// See routes.go for handling of the HTTP requests during this process
+// See routes.go for handling of new HTTP requests during this process
 func graceful() {
     serverActive = false
     log.Println("Server shutdown initiated. Completing open requests and shutting down in 5 seconds...")
     time.Sleep(time.Duration(5) * time.Second)
     log.Println("Shutdown complete. Goodbye!")
-    os.Exit(1)
+
+    os.Exit(0)
 }
 
