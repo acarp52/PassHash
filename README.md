@@ -52,6 +52,3 @@ should return:
 
 You may also open `http://localhost:8080` in a web browser and use the built-in form to make a request.
 
-### Testing web server
-The supplied testing suite is contained within test.sh, and can be run with the command:
-* `bash test.sh`

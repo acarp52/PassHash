@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Test suite that is not nearly as fleshed out as it could be. My bash knowledge is lacking.
+# Mainly tests if server can handle concurrent connections.
+
 PW1=`curl -s -X POST --data "password=angryMonkey" http://localhost:8080`
 PW2=`curl -s -X POST --data "password=testPassword" http://localhost:8080`
 PW3=`curl -s -X POST --data "password=foobar" http://localhost:8080`
