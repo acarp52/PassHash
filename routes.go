@@ -1,77 +1,70 @@
 package main
 
 import (
-    //"os"
     "fmt"
     "log"
     "net/http"
     "time"
 )
 
+// Countrols how the server handles HTTP requests, and what the response is
 func routes(writer http.ResponseWriter, request *http.Request) {
-    //request.ParseForm()
 
-    if request.Method == "POST" {        
-        request.ParseForm()
-        
-        if len(request.Form) != 1 {
-            log.Println("Error: request contained multiple fields")
-            fmt.Fprintf(writer, "Error: expected single field. Received %v\n", request.Form)
-        } else {
-            for key, _ := range request.Form {
-                if key == "password" {
-                    log.Println("Recieved password request, with body", request.Form[key][0])
-                    hashedpasswd := hashPassword(request.Form[key][0])
-                    log.Println(hashedpasswd)
-                    showhash(writer,  hashedpasswd+ "\n")
-                } else if key == "shutdown" {
-                    fmt.Fprintf(writer, "You made a shutdown request!\n")
-                    graceful()
-                } else {
-                    log.Printf("Recieved invalid request %v", key)
-                    fmt.Fprintf(writer, "Server cannot handle your request, try  \"password\" or \"shutdown\".\n")
+    // Checks global variable to see if server is active and accepting new requests
+    if serverActive{
+
+        if request.Method == "POST" {        
+            request.ParseForm()
+            
+            // Should only accept one parameter at a time
+            if len(request.Form) != 1 {
+                log.Println("Error: request contained multiple parameters")
+                fmt.Fprintf(writer, "Error: expected single parameter. Received %v\n", request.Form)
+            
+            } else {
+                // Parse requests
+                for key, _ := range request.Form {
+                    if key == "password" {
+                        log.Println("Recieved password request, with body", request.Form[key][0])
+                        hashedpasswd := hashPassword(request.Form[key][0])
+                        log.Println(hashedpasswd)
+                        showhash(writer,  hashedpasswd+ "\n")
+
+                    } else if key == "shutdown" {
+                        // fmt.Fprintf(writer, "You made a shutdown request!\n")
+                        errmsg := "Server shutdown initiated. No new requests can be made at this time."
+                        http.Error(writer, errmsg, 503)
+                        graceful()
+
+                    } else {
+                        log.Printf("Recieved invalid request %v", key)
+                        errmsg := "Error: server cannot handle your request. Try  \"password\" or \"shutdown\"."
+                        http.Error(writer, errmsg, 500)
+                    }
                 }
             }
-        }
 
-        // params := request.Form["password"] // to get params value with key
-        // fmt.Println(params)
+            // Always hold valid connecton open for 5 seconds before responding
+            log.Printf("Hold open for 5 seconds")
+            time.Sleep(time.Duration(5) * time.Second)
+
+        } else if request.Method == "GET" {
+            // Display HTML. It will look strange if the user makes a GET through curl, but should 
+            // display properly in a web browser.
+            log.Prinln("Recieved GET")
+            inputpasswd(writer) 
         
-        // log.Println(request.Form)
-        // //LOG: map[{"test": "that"}:[]]
-        // var t string
-        // for key, _ := range request.Form {
-        //     log.Println(len(request.Form[key]))
-        //     log.Println(key)
-        //     //LOG: {"test": "that"}
-        //     // err := json.Unmarshal([]byte(key), &t)
-        //     // if err != nil {
-        //     //     log.Println(err.Error())
-        //     // }
-        // }
-        // log.Println(t)
-        // //LOG: that
+        } else {
+            // User made an HTTP request that the server cannot handle.
+            // Returns with an error message and HTTP response of: 501 Not Implemented
+            errmsg := "Request method not supported by server. Try:\n$ curl -X POST --data 'password=[yourpassword]'' http://localhost:8080\n"
+            http.Error(writer, errmsg, 501)
 
-        // if value, isValid := request.Form["password"]; isValid {
-        //     password = hashPassword(value[0])
-        // //} else if value, isValid := request.Form["shutdown"]; isValid {
-        //    // password = "shutdown"
-        // } else{
-        //     // log error
-        //     fmt.Fprintf(writer, "POST body not valid.\n")
-        // }
-
-        log.Printf("Hold open for 5 seconds")
-        time.Sleep(time.Duration(5) * time.Second)
-        //showhash(writer, hashPassword("angryMonkey") + "\n") 
-
-    } else if request.Method == "GET" {
-        inputpasswd(writer, nil) 
-    } else {
-        fmt.Fprintf(writer, "Invalid HTTP request. Try:\n$ curl -X POST --data 'password=[yourpassword]'' http://localhost:8080\n")
+        }
+    } else{
+        // Reject any new requests if server is no longer active (in the process of shutting down)
+        // Returns with an error message and HTTP response of: 503 Service Unavailable
+        errmsg := "Server is shutting down and not accepting new requests. Sorry!"
+        http.Error(writer, errmsg, 503)
     }
-}
-
-func shutdown(writer http.ResponseWriter, request *http.Request) {
-    fmt.Fprintf(writer, "Server is shutting down and not accepting new requests. Sorry!\n")
 }

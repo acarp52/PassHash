@@ -10,30 +10,17 @@ import (
     "time"
 )
 
-func usage() {
-        fmt.Fprintf(os.Stderr, "Usage: passhash [port number]\n")
-        os.Exit(1)
-}
-
-func graceful() {
-    //mux := http.NewServeMux()
-    http.HandleFunc("/", shutdown)
-    // http.ListenAndServe(":8080", mux)
-
-    fmt.Println("Completing open requests and shutting down server in 5 seconds...")
-    time.Sleep(time.Duration(5) * time.Second)
-    fmt.Println("Shutdown complete. Goodbye!")
-    os.Exit(1)
-}
+// Global variable that should be true while the server is active and accepting new requests
+var serverActive bool
 
 func main() {
+
     // Make sure a port number is supplied
     if len(os.Args) != 2 {
         usage()
     }
     port := os.Args[1]
-    mux := http.NewServeMux()
-
+    
     // Gracefully handle CTRL-C interrupt from the OS
     c := make(chan os.Signal, 1)
     signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -42,11 +29,26 @@ func main() {
         graceful()
     }()
 
-    for {
-        
-        mux.HandleFunc("/", routes) 
-        // log.Fatal(http.ListenAndServe(":" + port, nil))
-        log.Printf("Server is listening at port %v", port)
-        http.ListenAndServe(":" + port, mux)
-    }
+    // Start server
+    serverActive = true
+    http.HandleFunc("/", routes) 
+    log.Printf("Server is listening at port %v", port)
+    http.ListenAndServe(":" + port, nil)
 }
+
+// Outputs usage information and exits the program
+func usage() {
+        fmt.Fprintf(os.Stderr, "Usage: passhash [port number]\n")
+        os.Exit(1)
+}
+
+// Gracefully shuts down the server. 
+// See routes.go for handling of the HTTP requests during this process
+func graceful() {
+    serverActive = false
+    log.Println("Server shutdown initiated. Completing open requests and shutting down in 5 seconds...")
+    time.Sleep(time.Duration(5) * time.Second)
+    log.Println("Shutdown complete. Goodbye!")
+    os.Exit(1)
+}
+
